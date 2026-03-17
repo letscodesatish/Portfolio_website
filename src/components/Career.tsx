@@ -5,8 +5,8 @@ const Career = () => {
     <div className="career-section section-container">
       <div className="career-container">
         <h2>
-          My career <span>&</span>
-          <br /> experience
+          Education <span>&</span>
+          <br /> Experience
         </h2>
         <div className="career-info">
           <div className="career-timeline">
@@ -15,43 +15,37 @@ const Career = () => {
           <div className="career-info-box">
             <div className="career-info-in">
               <div className="career-role">
-                <h4>Full Stack Developer</h4>
-                <h5>Ikshan</h5>
+                <h4>CS Engineering (B.E.)</h4>
+                <h5>Chhatrapati Shahu Ji Maharaj University</h5>
               </div>
-              <h3>2020</h3>
+              <h3>2028</h3>
             </div>
             <p>
-              Built 6+ complete applications using React.js. Integrated backend
-              authentication using Node.js & MongoDB. Created responsive UI/UX
-              and designed wireframes using Figma.
+              Pursuing Bachelor of Engineering in Computer Science. Currently in 1st year with a CGPA of 8.2. Actively self exploring and participating in events.
             </p>
           </div>
           <div className="career-info-box">
             <div className="career-info-in">
               <div className="career-role">
-                <h4>Senior Full Stack Developer</h4>
-                <h5>Monocept (Max Life Insurance)</h5>
+                <h4>Python Programmer</h4>
+                <h5>CodeSoft</h5>
               </div>
-              <h3>2021</h3>
+              <h3>Exp</h3>
             </div>
             <p>
-              Led two development teams on Mpro, a large-scale insurance
-              operations platform. Developed multiple modules using React.js &
-              migrated critical functionalities to Node.js microservices.
+              Built projects like a Calculator, Contact Book, Password Generator, Rock-Paper-Scissors game, and a To-Do List application.
             </p>
           </div>
           <div className="career-info-box">
             <div className="career-info-in">
               <div className="career-role">
-                <h4>Full Stack Developer</h4>
-                <h5>Logic Loop</h5>
+                <h4>Class 12th & 10th (CBSE)</h4>
+                <h5>Kendriya Vidyalaya PDDU Nagar, U.P</h5>
               </div>
-              <h3>NOW</h3>
+              <h3>Past</h3>
             </div>
             <p>
-              Building Solid, a proprietary low-code platform using Angular,
-              Next.js & NestJS. Delivering production-ready CMS-based projects
-              including e-commerce, CRM, and import-export automation systems.
+              Completed Class 12th with 90% and Class 10th with 95% from CBSE board. Built a strong foundation in science and mathematics.
             </p>
           </div>
         </div>

@@ -1,0 +1,127 @@
+/* ── Tech Stack Section ── */
+.tech-stack-section {
+  position: relative;
+  z-index: 1;
+  background-color: var(--backgroundColor);
+  padding: 80px 0;
+  width: 100%;
+}
+
+.tech-stack-container {
+  max-width: var(--cMaxWidth);
+  margin: auto;
+  width: var(--cWidth);
+}
+
+.tech-stack-section h2 {
+  font-size: 70px;
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 50px;
+}
+
+.tech-stack-section h2>span {
+  color: var(--accentColor);
+}
+
+.tech-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.tech-category {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tech-category h3 {
+  font-size: 28px;
+  font-weight: 500;
+  margin: 0;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 15px;
+}
+
+.tech-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 20px;
+}
+
+.tech-item {
+  background: var(--backgroundColor);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.tech-item:hover {
+  background: rgba(94, 234, 212, 0.08);
+  border-color: var(--accentColor);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2), 0 0 15px rgba(94, 234, 212, 0.2);
+}
+
+.tech-icon {
+  font-size: 40px;
+  color: #eae5ec;
+  transition: all 0.3s ease;
+}
+
+.tech-item:hover .tech-icon {
+  color: var(--accentColor);
+  transform: scale(1.1);
+}
+
+.tech-name {
+  font-size: 15px;
+  font-weight: 400;
+  color: #adacac;
+  text-align: center;
+  transition: color 0.3s ease;
+}
+
+.tech-item:hover .tech-name {
+  color: #fff;
+}
+
+/* ── Responsive ── */
+@media only screen and (max-width: 1400px) {
+  .tech-stack-section h2 {
+    font-size: 50px;
+  }
+}
+
+@media only screen and (max-width: 900px) {
+  .tech-stack-section h2 {
+    font-size: 40px;
+    margin-bottom: 30px;
+  }
+  
+  .tech-category h3 {
+    font-size: 22px;
+  }
+  
+  .tech-items {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 15px;
+  }
+  
+  .tech-icon {
+    font-size: 30px;
+  }
+  
+  .tech-name {
+    font-size: 14px;
+  }
+}

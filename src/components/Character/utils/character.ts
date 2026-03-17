@@ -34,11 +34,12 @@ const setCharacter = (
 
                 // Change clothing colors to match site theme
                 if (mesh.material) {
-                  if (mesh.name === "BODY.SHIRT") { // The shirt mesh
+                  const meshName = mesh.name.toLowerCase();
+                  if (meshName.includes("shirt") || meshName.includes("top") || mesh.name === "Wolf3D_Outfit_Top" || mesh.name === "BODY.SHIRT") { // The shirt mesh
                     const newMat = (mesh.material as THREE.Material).clone() as THREE.MeshStandardMaterial;
-                    newMat.color = new THREE.Color("#8B4513");
+                    newMat.color = new THREE.Color("#0000FF");
                     mesh.material = newMat;
-                  } else if (mesh.name === "Pant") {
+                  } else if (meshName.includes("pant") || meshName.includes("bottom")) {
                     const newMat = (mesh.material as THREE.Material).clone() as THREE.MeshStandardMaterial;
                     newMat.color = new THREE.Color("#000000");
                     mesh.material = newMat;

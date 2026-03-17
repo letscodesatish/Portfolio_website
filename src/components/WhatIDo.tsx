@@ -87,22 +87,20 @@ const WhatIDo = () => {
             <div className="what-corner"></div>
 
             <div className="what-content-in">
-              <h3>FRONTEND</h3>
-              <h4>Building Interactive UIs</h4>
+              <h3>AI & Machine Learning</h3>
+              <h4>Exploring Intelligent Systems</h4>
               <p>
-                Crafting performant, responsive interfaces with modern frameworks.
-                From SPAs to micro-frontends, I deliver pixel-perfect experiences.
+                I work on learning and experimenting with Artificial Intelligence and Machine Learning using Python and tools like NumPy, Pandas, and Scikit-learn. I use platforms like Google Colab to build, test, and understand machine learning models while exploring how data can be used to create intelligent solutions.
               </p>
               <h5>Skillset & tools</h5>
               <div className="what-content-flex">
-                <div className="what-tags">React.js</div>
-                <div className="what-tags">Angular</div>
-                <div className="what-tags">Next.js</div>
-                <div className="what-tags">TypeScript</div>
-                <div className="what-tags">JavaScript</div>
-                <div className="what-tags">Material UI</div>
-                <div className="what-tags">HTML5</div>
-                <div className="what-tags">CSS3</div>
+                <div className="what-tags">Python</div>
+                <div className="what-tags">NumPy</div>
+                <div className="what-tags">Pandas</div>
+                <div className="what-tags">Scikit-learn</div>
+                <div className="what-tags">Matplotlib</div>
+                <div className="what-tags">Google Colab</div>
+                <div className="what-tags">Jupyter</div>
               </div>
               <div className="what-arrow"></div>
             </div>
@@ -126,22 +124,54 @@ const WhatIDo = () => {
             </div>
             <div className="what-corner"></div>
             <div className="what-content-in">
-              <h3>BACKEND</h3>
-              <h4>Scalable Server Architecture</h4>
+              <h3>Web Development</h3>
+              <h4>Building Modern Web Applications</h4>
               <p>
-                Designing robust APIs and microservices. From CMS platforms to
-                complex business logic, I build backends that scale.
+                I develop responsive and interactive websites using HTML, CSS, JavaScript, and React. I focus on creating clean user interfaces and functional web applications while continuously improving my frontend and web development skills.
               </p>
               <h5>Skillset & tools</h5>
               <div className="what-content-flex">
+                <div className="what-tags">HTML5</div>
+                <div className="what-tags">CSS3</div>
+                <div className="what-tags">JavaScript</div>
+                <div className="what-tags">React</div>
                 <div className="what-tags">Node.js</div>
-                <div className="what-tags">NestJS</div>
-                <div className="what-tags">Express.js</div>
-                <div className="what-tags">MongoDB</div>
-                <div className="what-tags">PostgreSQL</div>
-                <div className="what-tags">REST APIs</div>
-                <div className="what-tags">Microservices</div>
-                <div className="what-tags">Python</div>
+                <div className="what-tags">Responsive Design</div>
+              </div>
+              <div className="what-arrow"></div>
+            </div>
+          </div>
+          <div
+            className="what-content what-noTouch"
+            ref={(el) => setRef(el, 2)}
+          >
+            <div className="what-border1">
+              <svg height="100%">
+                <line
+                  x1="0"
+                  y1="100%"
+                  x2="100%"
+                  y2="100%"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeDasharray="6,6"
+                />
+              </svg>
+            </div>
+            <div className="what-corner"></div>
+            <div className="what-content-in">
+              <h3>Programming & Problem Solving</h3>
+              <h4>Strengthening Core CS Skills</h4>
+              <p>
+                I practice programming using Java and improve my logical thinking through Data Structures and Algorithms. Solving coding problems helps me build a strong foundation for software development.
+              </p>
+              <h5>Skillset & tools</h5>
+              <div className="what-content-flex">
+                <div className="what-tags">Java</div>
+                <div className="what-tags">DSA</div>
+                <div className="what-tags">Problem Solving</div>
+                <div className="what-tags">Algorithms</div>
+                <div className="what-tags">Data Structures</div>
               </div>
               <div className="what-arrow"></div>
             </div>
