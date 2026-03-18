@@ -41,3 +41,4 @@ export const useLoading = () => {
   }
   return context;
 };
+export { setProgress } from "../components/Loading";

@@ -3,12 +3,15 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HoverLinks from "./HoverLinks";
 import { gsap } from "gsap";
 import { ScrollSmoother } from "gsap-trial/ScrollSmoother";
+import { Link } from "react-router-dom";
+import { useAuth0 } from "@auth0/auth0-react";
 import "./styles/Navbar.css";
 
 gsap.registerPlugin(ScrollSmoother, ScrollTrigger);
 export let smoother: ScrollSmoother;
 
 const Navbar = () => {
+  const { isAuthenticated, logout } = useAuth0();
   useEffect(() => {
     smoother = ScrollSmoother.create({
       wrapper: "#smooth-wrapper",
@@ -27,10 +30,12 @@ const Navbar = () => {
     links.forEach((elem) => {
       let element = elem as HTMLAnchorElement;
       element.addEventListener("click", (e) => {
-        if (window.innerWidth > 1024) {
+        let currentTarget = e.currentTarget as HTMLAnchorElement;
+        let section = currentTarget.getAttribute("data-href");
+        
+        // Only prevent default and scroll if it's an internal section link
+        if (window.innerWidth > 1024 && section && section.startsWith("#")) {
           e.preventDefault();
-          let elem = e.currentTarget as HTMLAnchorElement;
-          let section = elem.getAttribute("data-href");
           smoother.scrollTo(section, true, "top top");
         }
       });
@@ -64,9 +69,29 @@ const Navbar = () => {
             </a>
           </li>
           <li>
+            <a data-href="#certificates" href="#certificates">
+              <HoverLinks text="CERTIFICATES" />
+            </a>
+          </li>
+          <li>
             <a data-href="#contact" href="#contact">
               <HoverLinks text="CONTACT" />
             </a>
+          </li>
+          <li className="navbar-auth">
+            {isAuthenticated ? (
+              <button 
+                onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })} 
+                className="logout-btn"
+                data-cursor="disable"
+              >
+                <HoverLinks text="LOGOUT" />
+              </button>
+            ) : (
+              <Link to="/login" className="login-btn" data-cursor="disable">
+                <HoverLinks text="LOGIN" />
+              </Link>
+            )}
           </li>
         </ul>
       </div>

@@ -1,23 +1,34 @@
 import { lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./App.css";
 
 const CharacterModel = lazy(() => import("./components/Character"));
 const MainContainer = lazy(() => import("./components/MainContainer"));
+const Landing = lazy(() => import("./components/Auth/Landing"));
 import { LoadingProvider } from "./context/LoadingProvider";
 
 const App = () => {
   return (
-    <>
+    <BrowserRouter>
       <LoadingProvider>
-        <Suspense>
-          <MainContainer>
-            <Suspense>
-              <CharacterModel />
-            </Suspense>
-          </MainContainer>
+        <Suspense fallback={<div className="loading-fallback">Loading...</div>}>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <MainContainer>
+                  <Suspense>
+                    <CharacterModel />
+                  </Suspense>
+                </MainContainer>
+              }
+            />
+            <Route path="/login" element={<Landing />} />
+            <Route path="/signup" element={<Landing />} />
+          </Routes>
         </Suspense>
       </LoadingProvider>
-    </>
+    </BrowserRouter>
   );
 };
 
