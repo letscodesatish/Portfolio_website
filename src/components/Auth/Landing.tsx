@@ -38,7 +38,23 @@ const AuthPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Email/Password login requires a custom backend which is currently not implemented. Please use Google Login.");
+    const emailInput = (document.getElementById("email") as HTMLInputElement).value;
+    const passwordInput = (document.getElementById("password") as HTMLInputElement).value;
+    
+    if (emailInput && passwordInput) {
+      if (emailInput === "admin@test.com") {
+         alert("Please use the Admin Portal for administrator login.");
+         return;
+      }
+      const mockUser = {
+        name: emailInput.split('@')[0],
+        email: emailInput,
+        picture: "https://ui-avatars.com/api/?name=" + emailInput.split('@')[0],
+        role: "user" as const
+      };
+      login("mock_local_token", mockUser);
+      window.location.href = "/";
+    }
   };
 
   const handleGoogleLogin = useGoogleLogin({
@@ -138,6 +154,9 @@ const AuthPage = () => {
           ) : (
             <>Already have an account? <span onClick={() => setMode("login")} className="auth-toggle">Login</span></>
           )}
+          <div style={{ marginTop: '15px' }}>
+            <Link to="/admin" className="auth-toggle" style={{ fontSize: '0.85rem', opacity: 0.8 }}>Goto Admin Portal</Link>
+          </div>
         </div>
       </div>
     </div>
