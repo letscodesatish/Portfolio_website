@@ -4,17 +4,20 @@ import { gsap } from "gsap";
 import { HiArrowLeft } from "react-icons/hi";
 import { FaGoogle, FaGithub } from "react-icons/fa";
 import { useLoading, setProgress } from "../../context/LoadingProvider";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useGoogleLogin } from "@react-oauth/google";
+import axios from "axios";
+import { useAuthContext } from "../../context/AuthProvider";
+
 import "../styles/Auth.css";
 
 const AuthPage = () => {
+  const { login } = useAuthContext();
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const { setLoading } = useLoading();
-  const { loginWithRedirect } = useAuth0();
 
   useEffect(() => {
     const loader = setProgress(setLoading);
@@ -35,18 +38,32 @@ const AuthPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real Auth0 setup, we might use loginWithRedirect for email/password too
-    // or call a custom login logic if we were using the Management API directly.
-    // For this SPI integration, we'll favor redirect.
-    loginWithRedirect();
+    alert("Email/Password login requires a custom backend which is currently not implemented. Please use Google Login.");
   };
 
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const userInfo = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        });
+        login(tokenResponse.access_token, userInfo.data);
+        // Force a hard redirect to bypass any SPA state locking
+        window.location.href = "/";
+      } catch (error) {
+        alert("Failed to fetch user info from Google. Check console for details.");
+        console.error("Failed to fetch user info", error);
+      }
+    },
+    onError: (errorResponse) => alert("Login failed! " + JSON.stringify(errorResponse)),
+  });
+
   const handleSocialLogin = (connection: string) => {
-    loginWithRedirect({
-      authorizationParams: {
-        connection: connection,
-      },
-    });
+    if (connection === "google-oauth2") {
+      handleGoogleLogin();
+    } else {
+      alert("This login method is currently disabled.");
+    }
   };
 
   return (

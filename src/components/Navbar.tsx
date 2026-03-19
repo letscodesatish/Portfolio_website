@@ -2,16 +2,16 @@ import { useEffect } from "react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HoverLinks from "./HoverLinks";
 import { gsap } from "gsap";
-import { ScrollSmoother } from "gsap-trial/ScrollSmoother";
+import { ScrollSmoother } from "gsap/ScrollSmoother";
 import { Link } from "react-router-dom";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuthContext } from "../context/AuthProvider";
 import "./styles/Navbar.css";
 
 gsap.registerPlugin(ScrollSmoother, ScrollTrigger);
 export let smoother: ScrollSmoother;
 
 const Navbar = () => {
-  const { isAuthenticated, logout } = useAuth0();
+  const { isAuthenticated, logout } = useAuthContext();
   useEffect(() => {
     smoother = ScrollSmoother.create({
       wrapper: "#smooth-wrapper",
@@ -81,8 +81,8 @@ const Navbar = () => {
           <li className="navbar-auth">
             {isAuthenticated ? (
               <button 
-                onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })} 
-                className="logout-btn"
+                onClick={() => logout()} 
+                className="logout-btn" 
                 data-cursor="disable"
               >
                 <HoverLinks text="LOGOUT" />

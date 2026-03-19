@@ -1,4 +1,4 @@
-import React from "react";
+
 import "./styles/TechStack.css";
 import { 
   FaJava, FaPython, FaJsSquare, FaHtml5, FaCss3Alt, FaReact, FaNodeJs, FaGitAlt, FaGithub, FaNetworkWired 
