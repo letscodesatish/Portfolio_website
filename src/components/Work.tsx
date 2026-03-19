@@ -5,6 +5,7 @@ import WorkImage from "./WorkImage";
 import { MdArrowBack, MdArrowForward } from "react-icons/md";
 import { useAuthContext } from "../context/AuthProvider";
 import { FaEdit, FaTrash } from "react-icons/fa";
+import { supabase } from "../utils/supabaseClient";
 
 export interface Project {
   title: string;
@@ -15,6 +16,7 @@ export interface Project {
 }
 
 const defaultProjects: Project[] = [
+  // (default data)
   {
     title: "House Pricing Prediction Model",
     category: "Machine Learning",
@@ -97,18 +99,48 @@ const Work = () => {
   const [isFormMode, setIsFormMode] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<Project>>({});
+  const [isInitialized, setIsInitialized] = useState(true);
+
+  const fetchProjects = async () => {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching projects:', error);
+      setLocalProjects(defaultProjects);
+    } else if (data && data.length > 0) {
+      setLocalProjects(data);
+      setIsInitialized(true);
+    } else {
+      setLocalProjects([]);
+      setIsInitialized(false);
+    }
+  };
+
+  const syncToSupabase = async () => {
+    if (!window.confirm("Upload all default projects to Supabase?")) return;
+    
+    const formatted = defaultProjects.map(p => ({
+      title: p.title,
+      category: p.category,
+      tools: p.tools,
+      image: p.image,
+      github: p.github || null
+    }));
+
+    const { error } = await supabase.from('projects').insert(formatted);
+    if (error) {
+      alert("Error: " + error.message);
+    } else {
+      alert("Projects synced!");
+      fetchProjects();
+    }
+  };
 
   useEffect(() => {
-    const saved = localStorage.getItem("admin_projects");
-    if (saved) {
-      try {
-        setLocalProjects(JSON.parse(saved));
-      } catch (e) {
-        setLocalProjects(defaultProjects);
-      }
-    } else {
-      setLocalProjects(defaultProjects);
-    }
+    fetchProjects();
   }, []);
 
   const goToSlide = useCallback(
@@ -145,11 +177,23 @@ const Work = () => {
     setIsFormMode(true);
   };
 
-  const deleteProject = (index: number) => {
+  const deleteProject = async (index: number) => {
+    const projectToDelete = localProjects[index];
     if (window.confirm("Are you sure you want to delete this project?")) {
+      if ((projectToDelete as any).id) {
+        const { error } = await supabase
+          .from('projects')
+          .delete()
+          .eq('id', (projectToDelete as any).id);
+
+        if (error) {
+          alert('Error deleting project: ' + error.message);
+          return;
+        }
+      }
+
       const updated = localProjects.filter((_, i) => i !== index);
       setLocalProjects(updated);
-      localStorage.setItem("admin_projects", JSON.stringify(updated));
       if (currentIndex >= updated.length && updated.length > 0) {
         setCurrentIndex(updated.length - 1);
       } else if (updated.length === 0) {
@@ -158,31 +202,49 @@ const Work = () => {
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.category || !formData.tools || !formData.image) return;
     
-    const submittedProject: Project = {
+    const submittedProject = {
       title: formData.title,
       category: formData.category,
       tools: formData.tools,
       image: formData.image,
-      github: formData.github || undefined,
+      github: formData.github || null,
     };
 
-    let updated = [...localProjects];
+    let error;
     if (editingIndex !== null) {
-      updated[editingIndex] = submittedProject;
+      const projectToUpdate = localProjects[editingIndex];
+      if ((projectToUpdate as any).id) {
+        const res = await supabase
+          .from('projects')
+          .update(submittedProject)
+          .eq('id', (projectToUpdate as any).id);
+        error = res.error;
+      } else {
+        const res = await supabase
+          .from('projects')
+          .insert([submittedProject]);
+        error = res.error;
+      }
     } else {
-      updated = [submittedProject, ...updated];
-      setCurrentIndex(0); // Optional: go to the newly added project
+      const res = await supabase
+        .from('projects')
+        .insert([submittedProject]);
+      error = res.error;
+      if (!error) setCurrentIndex(0);
     }
     
-    setLocalProjects(updated);
-    localStorage.setItem("admin_projects", JSON.stringify(updated));
-    setIsFormMode(false);
-    setFormData({});
-    setEditingIndex(null);
+    if (error) {
+      alert('Error saving project: ' + error.message);
+    } else {
+      fetchProjects();
+      setIsFormMode(false);
+      setFormData({});
+      setEditingIndex(null);
+    }
   };
 
   return (
@@ -191,13 +253,23 @@ const Work = () => {
         <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
           <span>My <span>Work</span></span>
           {isAdmin && (
-            <button 
-              onClick={openAddForm}
-              className="admin-add-btn"
-              style={{ fontSize: '1rem', padding: '10px 20px', background: '#ff4b4b', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-            >
-              + Add Project
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {!isInitialized && (
+                <button 
+                  onClick={syncToSupabase}
+                  style={{ fontSize: '0.8rem', padding: '10px 15px', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '5px', cursor: 'pointer' }}
+                >
+                  🔄 Sync Defaults
+                </button>
+              )}
+              <button 
+                onClick={openAddForm}
+                className="admin-add-btn"
+                style={{ fontSize: '1rem', padding: '10px 20px', background: '#ff4b4b', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+              >
+                + Add Project
+              </button>
+            </div>
           )}
         </h2>
 

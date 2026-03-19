@@ -11,9 +11,11 @@ import { VscVscode } from "react-icons/vsc";
 import { MdOutlinePsychology } from "react-icons/md";
 import { BsBarChartFill } from "react-icons/bs";
 import { useAuthContext } from "../context/AuthProvider";
+import { supabase } from "../utils/supabaseClient";
 
 // Icon mapping to allow serialization
 const iconMap: { [key: string]: JSX.Element } = {
+  // (same icon map)
   FaJava: <FaJava />,
   FaPython: <FaPython />,
   FaJsSquare: <FaJsSquare />,
@@ -46,6 +48,7 @@ interface TechCategory {
 }
 
 const defaultTechStack: TechCategory[] = [
+  // (default data)
   {
     category: "Programming Languages",
     items: [
@@ -102,6 +105,7 @@ const TechStack = () => {
   const [localTechStack, setLocalTechStack] = useState<TechCategory[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(true);
   
   const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
   const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
@@ -110,27 +114,57 @@ const TechStack = () => {
   const [itemName, setItemName] = useState("");
   const [itemIcon, setItemIcon] = useState("FaJsSquare");
 
-  useEffect(() => {
-    const saved = localStorage.getItem("admin_techstack");
-    if (saved) {
-      try {
-        setLocalTechStack(JSON.parse(saved));
-      } catch (e) {
-        setLocalTechStack(defaultTechStack);
-      }
-    } else {
-      setLocalTechStack(defaultTechStack);
-    }
-  }, []);
+  const fetchTechStack = async () => {
+    const { data, error } = await supabase
+      .from('tech_stack')
+      .select('*')
+      .order('created_at', { ascending: true });
 
-  const saveStack = (updated: TechCategory[]) => {
-    setLocalTechStack(updated);
-    localStorage.setItem("admin_techstack", JSON.stringify(updated));
+    if (error) {
+      console.error('Error fetching tech stack:', error);
+      setLocalTechStack(defaultTechStack);
+    } else if (data && data.length > 0) {
+      setLocalTechStack(data);
+      setIsInitialized(true);
+    } else {
+      setLocalTechStack([]);
+      setIsInitialized(false);
+    }
   };
 
-  const handleAddCategory = () => {
-    const updated = [...localTechStack, { category: "New Category", items: [] }];
-    saveStack(updated);
+  const syncToSupabase = async () => {
+    if (!window.confirm("Sync all default tech categories and items to Supabase?")) return;
+    
+    // We insert each category as a row
+    const formatted = defaultTechStack.map(cat => ({
+      category: cat.category,
+      items: cat.items
+    }));
+
+    const { error } = await supabase.from('tech_stack').insert(formatted);
+    if (error) {
+      alert("Error: " + error.message);
+    } else {
+      alert("Tech Stack synced!");
+      fetchTechStack();
+    }
+  };
+
+  useEffect(() => {
+    fetchTechStack();
+  }, []);
+
+  const handleAddCategory = async () => {
+    const newCat = { category: "New Category", items: [] };
+    const { error } = await supabase
+      .from('tech_stack')
+      .insert([newCat]);
+    
+    if (error) {
+      alert('Error adding category: ' + error.message);
+      return;
+    }
+    fetchTechStack();
   };
 
   const openEditCategory = (index: number) => {
@@ -139,19 +173,54 @@ const TechStack = () => {
     setIsCategoryModalOpen(true);
   };
 
-  const handleUpdateCategory = (e: React.FormEvent) => {
+  const handleUpdateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (activeCategoryIndex === null) return;
-    const updated = [...localTechStack];
-    updated[activeCategoryIndex].category = categoryName;
-    saveStack(updated);
-    setIsCategoryModalOpen(false);
+    const catToUpdate = localTechStack[activeCategoryIndex];
+    
+    let error;
+    if ((catToUpdate as any).id) {
+       const res = await supabase
+        .from('tech_stack')
+        .update({ category: categoryName })
+        .eq('id', (catToUpdate as any).id);
+       error = res.error;
+    } else {
+       // If it was a default item, insert it as new
+       const res = await supabase
+        .from('tech_stack')
+        .insert([{ category: categoryName, items: catToUpdate.items }]);
+       error = res.error;
+    }
+    
+    if (error) {
+      alert('Database Error: ' + error.message + '\nMake sure you ran the SQL setup in Supabase!');
+    } else {
+      fetchTechStack();
+      setIsCategoryModalOpen(false);
+    }
   };
 
-  const handleDeleteCategory = (index: number) => {
+  const handleDeleteCategory = async (index: number) => {
     if (window.confirm("Delete this entire category?")) {
-      const updated = localTechStack.filter((_, i) => i !== index);
-      saveStack(updated);
+      const catToDelete = localTechStack[index];
+      if ((catToDelete as any).id) {
+        const { error } = await supabase
+          .from('tech_stack')
+          .delete()
+          .eq('id', (catToDelete as any).id);
+
+        if (error) {
+          alert('Error deleting category: ' + error.message);
+          return;
+        }
+      } else {
+        // Just remove from local state if it's a default that hasn't been saved to DB yet
+        const updated = localTechStack.filter((_, i) => i !== index);
+        setLocalTechStack(updated);
+        return;
+      }
+      fetchTechStack();
     }
   };
 
@@ -172,28 +241,66 @@ const TechStack = () => {
     setIsItemModalOpen(true);
   };
 
-  const handleItemSubmit = (e: React.FormEvent) => {
+  const handleItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (activeCategoryIndex === null) return;
     
-    const updated = [...localTechStack];
+    const catToUpdate = localTechStack[activeCategoryIndex];
+    const updatedItems = [...catToUpdate.items];
     const newItem = { name: itemName, iconName: itemIcon };
     
     if (activeItemIndex !== null) {
-      updated[activeCategoryIndex].items[activeItemIndex] = newItem;
+      updatedItems[activeItemIndex] = newItem;
     } else {
-      updated[activeCategoryIndex].items.push(newItem);
+      updatedItems.push(newItem);
     }
     
-    saveStack(updated);
-    setIsItemModalOpen(false);
+    let error;
+    if ((catToUpdate as any).id) {
+      const res = await supabase
+        .from('tech_stack')
+        .update({ items: updatedItems })
+        .eq('id', (catToUpdate as any).id);
+      error = res.error;
+    } else {
+      const res = await supabase
+        .from('tech_stack')
+        .insert([{ category: catToUpdate.category, items: updatedItems }]);
+      error = res.error;
+    }
+    
+    if (error) {
+      alert('Error saving item: ' + error.message);
+    } else {
+      fetchTechStack();
+      setIsItemModalOpen(false);
+    }
   };
 
-  const handleDeleteItem = (catIndex: number, itemIndex: number) => {
+  const handleDeleteItem = async (catIndex: number, itemIndex: number) => {
     if (window.confirm("Delete this item?")) {
-      const updated = [...localTechStack];
-      updated[catIndex].items = updated[catIndex].items.filter((_, i) => i !== itemIndex);
-      saveStack(updated);
+      const catToUpdate = localTechStack[catIndex];
+      const updatedItems = catToUpdate.items.filter((_, i) => i !== itemIndex);
+      
+      let error;
+      if ((catToUpdate as any).id) {
+        const res = await supabase
+          .from('tech_stack')
+          .update({ items: updatedItems })
+          .eq('id', (catToUpdate as any).id);
+        error = res.error;
+      } else {
+        const res = await supabase
+          .from('tech_stack')
+          .insert([{ category: catToUpdate.category, items: updatedItems }]);
+        error = res.error;
+      }
+
+      if (error) {
+        alert('Error deleting item: ' + error.message);
+      } else {
+        fetchTechStack();
+      }
     }
   };
 
@@ -203,57 +310,73 @@ const TechStack = () => {
         <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>My <span>Tech Stack</span></span>
           {isAdmin && (
-            <button 
-              onClick={handleAddCategory}
-              className="admin-add-btn"
-              style={{ fontSize: '1rem', padding: '10px 20px', background: '#ff4b4b', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-            >
-              + Add Category
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {!isInitialized && (
+                <button 
+                  onClick={syncToSupabase}
+                  style={{ fontSize: '0.8rem', padding: '10px 15px', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '5px', cursor: 'pointer' }}
+                >
+                  🔄 Sync Defaults
+                </button>
+              )}
+              <button 
+                onClick={handleAddCategory}
+                className="admin-admin-btn"
+                style={{ fontSize: '1rem', padding: '10px 20px', background: '#ff4b4b', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+              >
+                + Add Category
+              </button>
+            </div>
           )}
         </h2>
         
         <div className="tech-grid">
-          {localTechStack.map((techCat, index) => (
-            <div className="tech-category" key={index} style={{ position: 'relative' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h3 style={{ margin: 0 }}>{techCat.category}</h3>
-                {isAdmin && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => openEditCategory(index)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }} title="Edit Category"><FaEdit /></button>
-                    <button onClick={() => handleDeleteCategory(index)} style={{ background: 'none', border: 'none', color: '#ff4b4b', cursor: 'pointer' }} title="Delete Category"><FaTrash /></button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="tech-items">
-                {techCat.items.map((item, itemIndex) => (
-                  <div className="tech-item" key={itemIndex} data-cursor="disable" style={{ position: 'relative' }}>
-                    <div className="tech-icon">{iconMap[item.iconName] || <FaJsSquare />}</div>
-                    <span className="tech-name">{item.name}</span>
-                    
-                    {isAdmin && (
-                      <div className="item-admin-overlay" style={{ position: 'absolute', top: '-10px', right: '-10px', display: 'flex', gap: '4px', opacity: 1 }}>
-                        <button onClick={() => openEditItem(index, itemIndex)} style={{ background: '#333', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '10px' }}><FaEdit /></button>
-                        <button onClick={() => handleDeleteItem(index, itemIndex)} style={{ background: '#ff4b4b', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '10px' }}><FaTrash /></button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+          {localTechStack.length > 0 ? (
+            localTechStack.map((techCat, index) => (
+              <div className="tech-category" key={index} style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0 }}>{techCat.category}</h3>
+                  {isAdmin && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => openEditCategory(index)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }} title="Edit Category"><FaEdit /></button>
+                      <button onClick={() => handleDeleteCategory(index)} style={{ background: 'none', border: 'none', color: '#ff4b4b', cursor: 'pointer' }} title="Delete Category"><FaTrash /></button>
+                    </div>
+                  )}
+                </div>
                 
-                {isAdmin && (
-                   <div 
-                    onClick={() => openAddItem(index)}
-                    className="tech-item add-item-slot" 
-                    style={{ border: '2px dashed rgba(255,255,255,0.1)', background: 'transparent', cursor: 'pointer' }}
-                   >
-                     <div className="tech-icon"><FaPlus style={{ opacity: 0.3 }} /></div>
-                     <span className="tech-name" style={{ opacity: 0.3 }}>Add</span>
-                   </div>
-                )}
+                <div className="tech-items">
+                  {techCat.items.map((item, itemIndex) => (
+                    <div className="tech-item" key={itemIndex} data-cursor="disable" style={{ position: 'relative' }}>
+                      <div className="tech-icon">{iconMap[item.iconName] || <FaJsSquare />}</div>
+                      <span className="tech-name">{item.name}</span>
+                      
+                      {isAdmin && (
+                        <div className="item-admin-overlay" style={{ position: 'absolute', top: '-10px', right: '-10px', display: 'flex', gap: '4px', opacity: 1 }}>
+                          <button onClick={() => openEditItem(index, itemIndex)} style={{ background: '#333', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '10px' }}><FaEdit /></button>
+                          <button onClick={() => handleDeleteItem(index, itemIndex)} style={{ background: '#ff4b4b', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '10px' }}><FaTrash /></button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {isAdmin && (
+                    <div 
+                      onClick={() => openAddItem(index)}
+                      className="tech-item add-item-slot" 
+                      style={{ border: '2px dashed rgba(255,255,255,0.1)', background: 'transparent', cursor: 'pointer' }}
+                    >
+                      <div className="tech-icon"><FaPlus style={{ opacity: 0.3 }} /></div>
+                      <span className="tech-name" style={{ opacity: 0.3 }}>Add</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p style={{ color: "rgba(255,255,255,0.5)", gridColumn: '1/-1', textAlign: 'center', padding: '40px' }}>
+              {isInitialized ? "No tech categories found in database." : "Database not yet initialized. Use 'Sync Defaults' to start."}
+            </p>
+          )}
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { certificates, Certificate } from "../data/certificatesData";
 import { useAuthContext } from "../context/AuthProvider";
 import { FaEdit, FaTrash } from "react-icons/fa";
+import { supabase } from "../utils/supabaseClient";
 import "./styles/Certificates.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -20,24 +21,57 @@ const Certificates = () => {
   const [isFormMode, setIsFormMode] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<Certificate>>({});
+  const [isInitialized, setIsInitialized] = useState(true);
+
+  const fetchCertificates = async () => {
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching certificates:', error);
+      setLocalCerts(certificates);
+    } else if (data && data.length > 0) {
+      setLocalCerts(data);
+      setIsInitialized(true);
+    } else {
+      // If data is empty, we check if it was explicitly emptied or just never used.
+      // For now, if it's empty, we'll show an empty state to the admin so they know it's working.
+      setLocalCerts([]);
+      setIsInitialized(false);
+    }
+  };
+
+  const syncToSupabase = async () => {
+    if (!window.confirm("This will upload all 10 default certificates to your database. Continue?")) return;
+    
+    const formatted = certificates.map(c => ({
+      title: c.title,
+      issuer: c.issuer,
+      date: c.date,
+      description: c.description,
+      link: c.link || null
+    }));
+
+    const { error } = await supabase.from('certificates').insert(formatted);
+    if (error) {
+      alert("Error syncing: " + error.message);
+    } else {
+      alert("Successfully synced defaults to Supabase!");
+      fetchCertificates();
+    }
+  };
 
   useEffect(() => {
-    const saved = localStorage.getItem("admin_certificates");
-    if (saved) {
-      try {
-        setLocalCerts(JSON.parse(saved));
-      } catch (e) {
-        setLocalCerts(certificates);
-      }
-    } else {
-      setLocalCerts(certificates);
-    }
+    fetchCertificates();
   }, []);
 
   useEffect(() => {
     if (!sectionRef.current) return;
 
     const ctx = gsap.context(() => {
+      // (same GSAP logic)
       gsap.from(".certificates-title span", {
         y: 100,
         opacity: 0,
@@ -82,41 +116,71 @@ const Certificates = () => {
     setIsFormMode(true);
   };
 
-  const deleteCertificate = (e: React.MouseEvent, index: number) => {
+  const deleteCertificate = async (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
+    const certToDelete = localCerts[index];
     if (window.confirm("Are you sure you want to delete this certificate?")) {
+      if ((certToDelete as any).id) {
+        const { error } = await supabase
+          .from('certificates')
+          .delete()
+          .eq('id', (certToDelete as any).id);
+
+        if (error) {
+          alert('Error deleting certificate: ' + error.message);
+          return;
+        }
+      }
+      
       const updated = localCerts.filter((_, i) => i !== index);
       setLocalCerts(updated);
-      localStorage.setItem("admin_certificates", JSON.stringify(updated));
       setTimeout(() => ScrollTrigger.refresh(), 100);
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.issuer || !formData.date || !formData.description) return;
     
-    const submittedCert: Certificate = {
+    const submittedCert = {
       title: formData.title,
       issuer: formData.issuer,
       date: formData.date,
       description: formData.description,
-      link: formData.link || undefined,
+      link: formData.link || null,
     };
 
-    let updated = [...localCerts];
+    let error;
     if (editingIndex !== null) {
-      updated[editingIndex] = submittedCert;
+      const certToUpdate = localCerts[editingIndex];
+      if ((certToUpdate as any).id) {
+        const res = await supabase
+          .from('certificates')
+          .update(submittedCert)
+          .eq('id', (certToUpdate as any).id);
+        error = res.error;
+      } else {
+        const res = await supabase
+          .from('certificates')
+          .insert([submittedCert]);
+        error = res.error;
+      }
     } else {
-      updated = [submittedCert, ...updated];
+      const res = await supabase
+        .from('certificates')
+        .insert([submittedCert]);
+      error = res.error;
     }
     
-    setLocalCerts(updated);
-    localStorage.setItem("admin_certificates", JSON.stringify(updated));
-    setIsFormMode(false);
-    setFormData({});
-    setEditingIndex(null);
-    setTimeout(() => ScrollTrigger.refresh(), 100);
+    if (error) {
+      alert('Error saving certificate: ' + error.message);
+    } else {
+      fetchCertificates();
+      setIsFormMode(false);
+      setFormData({});
+      setEditingIndex(null);
+      setTimeout(() => ScrollTrigger.refresh(), 100);
+    }
   };
 
   return (
@@ -125,75 +189,87 @@ const Certificates = () => {
         <h2 className="certificates-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>My <span>Certificates</span></span>
           {isAdmin && (
-            <button 
-              onClick={openAddForm}
-              className="admin-add-btn"
-              style={{ fontSize: '1rem', padding: '10px 20px', background: '#ff4b4b', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-            >
-              + Add Certificate
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {!isInitialized && (
+                <button 
+                  onClick={syncToSupabase}
+                  style={{ fontSize: '0.8rem', padding: '10px 15px', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '5px', cursor: 'pointer' }}
+                >
+                  🔄 Sync Defaults
+                </button>
+              )}
+              <button 
+                onClick={openAddForm}
+                className="admin-add-btn"
+                style={{ fontSize: '1rem', padding: '10px 20px', background: '#ff4b4b', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+              >
+                + Add Certificate
+              </button>
+            </div>
           )}
         </h2>
 
         <div className="certificates-grid">
-          {localCerts.map((cert, index) => (
-            <div
-              className={`certificate-card ${cert.link ? 'clickable-card' : ''}`}
-              key={index}
-              ref={(el) => (cardsRef.current[index] = el)}
-              data-cursor="disable"
-              onClick={() => {
-                if (cert.link) {
-                  window.open(cert.link, "_blank", "noopener,noreferrer");
-                }
-              }}
-              style={cert.link ? { cursor: 'pointer', position: 'relative' } : { position: 'relative' }}
-            >
-              <div className="cert-header" style={{ position: 'relative' }}>
-                <span className="cert-date">{cert.date}</span>
-                <span className="cert-issuer">{cert.issuer}</span>
-              </div>
-              
-              {isAdmin && (
-                <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '8px', zIndex: 10 }}>
-                  <button 
-                    onClick={(e) => openEditForm(e, index, cert)}
-                    style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
-                    title="Edit"
-                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                  >
-                    <FaEdit size={16} />
-                  </button>
-                  <button 
-                    onClick={(e) => deleteCertificate(e, index)}
-                    style={{ background: 'rgba(255,75,75,0.1)', color: '#ff4b4b', border: '1px solid rgba(255,75,75,0.3)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
-                    title="Delete"
-                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,75,75,0.3)'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,75,75,0.1)'}
-                  >
-                    <FaTrash size={14} />
-                  </button>
+          {localCerts.length > 0 ? (
+            localCerts.map((cert, index) => (
+              <div
+                className={`certificate-card ${cert.link ? 'clickable-card' : ''}`}
+                key={index}
+                ref={(el) => (cardsRef.current[index] = el)}
+                data-cursor="disable"
+                onClick={() => {
+                  if (cert.link) {
+                    window.open(cert.link, "_blank", "noopener,noreferrer");
+                  }
+                }}
+                style={cert.link ? { cursor: 'pointer', position: 'relative' } : { position: 'relative' }}
+              >
+                <div className="cert-header" style={{ position: 'relative' }}>
+                  <span className="cert-date">{cert.date}</span>
+                  <span className="cert-issuer">{cert.issuer}</span>
                 </div>
-              )}
+                
+                {isAdmin && (
+                  <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '8px', zIndex: 10 }}>
+                    <button 
+                      onClick={(e) => openEditForm(e, index, cert)}
+                      style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                      title="Edit"
+                    >
+                      <FaEdit size={16} />
+                    </button>
+                    <button 
+                      onClick={(e) => deleteCertificate(e, index)}
+                      style={{ background: 'rgba(255,75,75,0.1)', color: '#ff4b4b', border: '1px solid rgba(255,75,75,0.3)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                      title="Delete"
+                    >
+                      <FaTrash size={14} />
+                    </button>
+                  </div>
+                )}
 
-              <div className="cert-body">
-                <h4>{cert.title}</h4>
-                <p>{cert.description}</p>
+                <div className="cert-body">
+                  <h4>{cert.title}</h4>
+                  <p>{cert.description}</p>
+                </div>
+                {cert.link && (
+                  <a
+                    onClick={(e) => e.stopPropagation()}
+                    href={cert.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="cert-link"
+                  >
+                    View Certificate ↗
+                  </a>
+                )}
               </div>
-              {cert.link && (
-                <a
-                  onClick={(e) => e.stopPropagation()}
-                  href={cert.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="cert-link"
-                >
-                  View Certificate ↗
-                </a>
-              )}
-            </div>
-          ))}
+            ))
+          ) : (
+             <p style={{ color: "rgba(255,255,255,0.5)", gridColumn: '1/-1', textAlign: 'center', padding: '40px' }}>
+               {isInitialized ? "No certificates found in database." : "Database not yet initialized. Use 'Sync Defaults' to start."}
+             </p>
+          )}
         </div>
       </div>
 
